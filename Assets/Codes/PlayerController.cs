@@ -1,49 +1,97 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class PlayerController : MonoBehaviour
 {
-    public CharacterController controller;     // CharacterController component'ine referans
-    public float speed = 12f;                  // Yürüme hýzý
-    public float gravity = -9.81f;             // Yerçekimi kuvveti (negatif olmalý)
-    public float jumpHeight = 3f;              // Zýplama yüksekliði
+    public float speed;
+    public float rotationSpeed;
+    public float jumpSpeed;
+    public float fallY;
+    private float ySpeed;
+    private CharacterController controller;
+    private Animator animator;
+    public bool isGrounded;
 
-    private Vector3 velocity;                  // Hareket vektörü (özellikle Y için)
-    private bool isGrounded;                   // Yere temas kontrolü
-
-    public Transform groundCheck;              // Ayak altý kontrol objesi (boþ GameObject)
-    public float groundDistance = 0.4f;        // Küre yarýçapý
-    public LayerMask groundMask;               // Sadece zeminle kontrol
+    private void Start()
+    {
+        controller = GetComponent<CharacterController>();
+        animator = GetComponent<Animator>();
+    }
 
     void Update()
     {
-        // Yere temas kontrolü
-        isGrounded = Physics.CheckSphere(groundCheck.position, groundDistance, groundMask);
-
-        // Yerdeysek düþüþ hýzýný sýfýrla (küçük negatif deðerle yapýþýk kalýr)
-        if (isGrounded && velocity.y < 0)
+        if (transform.position.y < fallY)
         {
-            velocity.y = -2f;
+            SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
         }
-
-        // Yön tuþlarýyla yatay hareket
         float x = Input.GetAxis("Horizontal");
         float z = Input.GetAxis("Vertical");
 
-        Vector3 move = transform.right * x + transform.forward * z;
-        controller.Move(move * speed * Time.deltaTime);
+        Vector3 moveDirection = transform.right * x + transform.forward * z;
+        moveDirection.Normalize();
 
-        // Space'e basýldýðýnda zýpla (eðer yerdeysen)
+        bool isWalking = (x != 0 || z != 0);
+        animator.SetBool ("isWalking", isWalking);
+
+        float magnitude = moveDirection.magnitude;
+        magnitude = Mathf.Clamp01(magnitude);
+        controller.SimpleMove(moveDirection * magnitude * speed);
+
+        ySpeed += Physics.gravity.y * Time.deltaTime;
+
         if (Input.GetButtonDown("Jump") && isGrounded)
         {
-            velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
+            ySpeed = jumpSpeed;
+            isGrounded = false;
+            animator.SetBool("isJumping", true);
         }
 
-        // Yerçekimi uygula (her frame yavaþça düþüþ eklenir)
-        velocity.y += gravity * Time.deltaTime;
+        Vector3 vel = moveDirection * magnitude;
+        vel.y = ySpeed;
 
-        // Yukarý-aþaðý hareketi uygula
-        controller.Move(velocity * Time.deltaTime);
+        controller.Move(vel * Time.deltaTime);
+
+        if (controller.isGrounded)
+        {
+            ySpeed = -0.5f;
+            isGrounded = true;
+            animator.SetBool("isJumping", false);
+        }
+        else
+        {
+            ySpeed += Physics.gravity.y * Time.deltaTime;
+        }
+
+        if (moveDirection != Vector3.zero)
+        {
+            Quaternion toRotate = Quaternion.LookRotation(moveDirection, Vector3.up);
+            transform.rotation = Quaternion.RotateTowards(transform.rotation, toRotate, rotationSpeed * Time.deltaTime);
+        }
+    }
+
+    private void OnTriggerEnter(Collider other)
+    {
+        if (other.CompareTag("Coin"))
+        {
+            if (other.GetComponent<CoinCollector>())
+            {
+                other.GetComponent<CoinCollector>().CollectCoin();
+            }
+        }
+
+        if (other.CompareTag("Finish"))
+        {
+            Debug.Log("Level Finished!");
+        }
+    }
+
+    private void OnControllerColliderHit(ControllerColliderHit hit)
+    {
+        if (hit.gameObject.CompareTag("UpDownMovement"))
+        {
+            transform.parent = hit.transform;
+        }
     }
 }
