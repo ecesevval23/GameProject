@@ -24,8 +24,10 @@ public class PlayerController : MonoBehaviour
     {
         if (transform.position.y < fallY)
         {
+            CoinCollector.coinValue = 0;
             SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
         }
+
         float x = Input.GetAxis("Horizontal");
         float z = Input.GetAxis("Vertical");
 
@@ -67,25 +69,11 @@ public class PlayerController : MonoBehaviour
         if (moveDirection != Vector3.zero)
         {
             Quaternion toRotate = Quaternion.LookRotation(moveDirection, Vector3.up);
-            transform.rotation = Quaternion.RotateTowards(transform.rotation, toRotate, rotationSpeed * Time.deltaTime);
+            transform.rotation = Quaternion.RotateTowards(transform.rotation, toRotate,
+                rotationSpeed * Time.deltaTime);
         }
     }
 
-    private void OnTriggerEnter(Collider other)
-    {
-        if (other.CompareTag("Coin"))
-        {
-            if (other.GetComponent<CoinCollector>())
-            {
-                other.GetComponent<CoinCollector>().CollectCoin();
-            }
-        }
-
-        if (other.CompareTag("Finish"))
-        {
-            Debug.Log("Level Finished!");
-        }
-    }
 
     private void OnControllerColliderHit(ControllerColliderHit hit)
     {

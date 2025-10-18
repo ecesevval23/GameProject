@@ -12,7 +12,9 @@ public class UpDownMovement : MonoBehaviour
     }
     void Update()
     {
-        float newY = startPos.y + Mathf.Sin(Time.time * speed) * height;
-        transform.position = new Vector3(startPos.x, newY, startPos.z);
+        float newY = startPos.y +
+        Mathf.Sin(Time.time * speed) * height;
+        transform.position = new Vector3
+        (startPos.x, newY, startPos.z);
     }
 }
