@@ -1,15 +1,16 @@
 using UnityEngine;
-using UnityEngine.UI;
+using TMPro; // TextMeshPro kütüphanesi (ŞART!)
 
 public class CoinUI : MonoBehaviour
 {
-    public Text coinText;
-    void Start()
+    public TextMeshProUGUI coinText;
+
+    void Update()
     {
-        UpdateCoinText(0);
-    }
-    public void UpdateCoinText(int coinValue)
-    {
-        coinText.text = "X " + coinValue;
+        // GameManager ve CoinText hazırsa yazıyı güncelle
+        if (GameManager.Instance != null && coinText != null)
+        {
+            coinText.text = GameManager.Instance.totalScore.ToString();
+        }
     }
 }

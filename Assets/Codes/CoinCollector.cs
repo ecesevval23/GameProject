@@ -1,32 +1,22 @@
 using UnityEngine;
-using TMPro;
+
 public class CoinCollector : MonoBehaviour
 {
-    public static int coinValue = 0;
-    private bool isCollected = false;
-    [SerializeField] private TMP_Text coinText;
     void Update()
     {
+        // Kendi etrafında dönme efekti
         transform.Rotate(0, 90f * Time.deltaTime, 0);
     }
+
     private void OnTriggerEnter(Collider other)
     {
-         if (!isCollected && other.CompareTag("Player"))
+        if (other.CompareTag("Player"))
         {
-            CollectCoin();
-        }
-    }
+            // Yöneticiye ulaş ve puanı artır
+            GameManager.Instance.AddScore(1);
 
-    public void CollectCoin()
-    {
-        isCollected = true;
-        coinValue++;
-        Debug.Log("Coin collected! Value: " + coinValue);
-        if (coinText != null)
-        {
-            coinText.text = "X " + coinValue;
+            // Kendini yok et
+            Destroy(gameObject);
         }
-
-        Destroy(gameObject);
     }
 }

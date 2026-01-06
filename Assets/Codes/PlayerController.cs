@@ -3,25 +3,20 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-// RequireComponent: Bu scripti bir objeye attığında otomatik olarak
-// CharacterController ve Animator'ı da ekler. Hata yapmanı önler.
 [RequireComponent(typeof(CharacterController))]
 [RequireComponent(typeof(Animator))]
 public class PlayerController : MonoBehaviour
 {
-    [Header("Movement Settings")] // Inspector'da düzenli görünmesi için
+    [Header("Movement Settings")]
     public float speed = 5f;
-    public float rotationSpeed = 720f;
+    public float rotationSpeed = 150f; // Dönüş hızı (Bunu Inspector'dan kendine göre ayarla)
     public float jumpSpeed = 10f;
-    public float gravity = -9.81f; // Physics.gravity yerine kendi kontrolümüzde olması daha iyidir
+    public float gravity = -9.81f;
     public float fallY = -10f;
 
     private float ySpeed;
     private CharacterController controller;
     private Animator animator;
-
-    // isGrounded'ı public yapmana gerek yok, controller'ın kendi verisini kullanacağız.
-    // Ama animatör için bir değişkende tutabiliriz.
     private bool isGrounded;
 
     private void Start()
@@ -36,85 +31,104 @@ public class PlayerController : MonoBehaviour
         HandleMovement();
     }
 
-    // Kod okunabilirliği için işlevleri metotlara böldük (Clean Code)
     void HandleGameReset()
     {
         if (transform.position.y < fallY)
         {
-            // İleride burayı bir GameManager üzerinden yapman daha şık olur
-            CoinCollector.coinValue = 0;
-            SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+            if (GameManager.Instance != null)
+            {
+                GameManager.Instance.RestartGame();
+            }
+            else
+            {
+                SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+            }
         }
     }
 
     void HandleMovement()
     {
-        // 1. Yer Kontrolü (Ground Check)
+        // 1. Yer Kontrolü
         isGrounded = controller.isGrounded;
 
         if (isGrounded && ySpeed < 0)
         {
-            ySpeed = -2f; // Tamamen 0 yapmıyoruz ki yere tam yapışsın (Snap)
+            ySpeed = -2f;
             animator.SetBool("isJumping", false);
+            animator.SetBool("isGrounded", true);
+        }
+        else if (!isGrounded)
+        {
+            animator.SetBool("isGrounded", false);
         }
 
         // 2. Input Alma
-        float x = Input.GetAxis("Horizontal");
-        float z = Input.GetAxis("Vertical");
+        // "Horizontal" (Sağ/Sol) tuşları artık sadece DÖNÜŞ için kullanılacak
+        float rotInput = Input.GetAxis("Horizontal");
 
-        // 3. Hareket Yönü Hesaplama
-        Vector3 moveDirection = new Vector3(x, 0, z);
-        moveDirection = transform.TransformDirection(moveDirection); // Kamera açısına göre gerekirse diye
+        // "Vertical" (İleri/Geri) tuşları sadece İLERLEMEK için kullanılacak
+        float moveInput = Input.GetAxis("Vertical");
 
-        // Eğer Magnitude 1'den büyükse normalize et (Çapraz gidince hızlanmasın)
-        if (moveDirection.magnitude > 1f)
-        {
-            moveDirection.Normalize();
-        }
+        // 3. Dönüş Mantığı (Senin istediğin kısım burası)
+        // Karakteri olduğu yerde, basma süresiyle orantılı döndürür
+        // Sağa basarsan sağa döner, sola basarsan sola döner.
+        transform.Rotate(0, rotInput * rotationSpeed * Time.deltaTime, 0);
 
-        // 4. Animasyon
-        bool isWalking = moveDirection.magnitude > 0.1f;
+        // 4. Hareket Mantığı
+        // Karakterin BAKTIĞI YÖNE (transform.forward) doğru gitmesini sağlarız
+        Vector3 moveDirection = transform.forward * moveInput;
+
+        // 5. Animasyon
+        // Eğer ileri/geri tuşuna basılıyorsa yürüme animasyonu çalışsın
+        bool isWalking = Mathf.Abs(moveInput) > 0.1f;
         animator.SetBool("isWalking", isWalking);
 
-        // 5. Rotasyon (Karakterin gittiği yöne dönmesi)
-        if (moveDirection != Vector3.zero)
-        {
-            Quaternion toRotate = Quaternion.LookRotation(moveDirection, Vector3.up);
-            transform.rotation = Quaternion.RotateTowards(transform.rotation, toRotate, rotationSpeed * Time.deltaTime);
-        }
+        // 6. Hareketi Uygula (Yürüme)
+        controller.Move(moveDirection * speed * Time.deltaTime);
 
-        // 6. Zıplama
+        // 7. Zıplama
         if (Input.GetButtonDown("Jump") && isGrounded)
         {
             ySpeed = jumpSpeed;
             animator.SetBool("isJumping", true);
         }
 
-        // 7. Yerçekimi Uygulama
+        // 8. Yerçekimi Uygula
         ySpeed += gravity * Time.deltaTime;
 
-        // 8. Son Hareketi Birleştirme ve Uygulama
-        // moveDirection (X ve Z) ile ySpeed (Y) birleştiriliyor
-        Vector3 finalVelocity = moveDirection * speed;
-        finalVelocity.y = ySpeed;
-
-        // SimpleMove KULLANMIYORUZ. Sadece Move.
-        controller.Move(finalVelocity * Time.deltaTime);
+        // Dikey Hareketi (Zıplama/Düşme) ayrıca uygula
+        controller.Move(Vector3.up * ySpeed * Time.deltaTime);
     }
 
     private void OnControllerColliderHit(ControllerColliderHit hit)
     {
-        // Hareketli platform mantığı
         if (hit.gameObject.CompareTag("UpDownMovement"))
         {
-            // CharacterController ile parent değiştirmek bazen sorun çıkarabilir.
-            // Eğer karakter titrerse buraya farklı bir çözüm gerekir ama şimdilik kalsın.
             transform.SetParent(hit.transform);
         }
         else
         {
-            // Platformdan inince parent'ı null yapmalısın yoksa platformla beraber gidersin!
             transform.SetParent(null);
         }
+
+        FallingPlatform platform = hit.gameObject.GetComponent<FallingPlatform>();
+        if (platform != null && hit.moveDirection.y < -0.3f)
+        {
+            platform.StartFalling(); // Platforma "Düş!" emrini ver
+        }
     }
-}
+    // --- BURAYI EKLE (En alta, son parantezden önce) ---
+    public void BouncePlayer(float force)
+    {
+        // Senin kodunda yukarı/aşağı hızını 'ySpeed' yönetiyor
+        ySpeed = force;
+
+        // Zıplama animasyonu devreye girsin ki karakter havada yürür gibi durmasın
+        if (animator != null)
+        {
+            animator.SetBool("isJumping", true);
+            animator.SetBool("isGrounded", false);
+        }
+    }
+    // ----------------------------------------------------
+} // Burası senin kodunun en sonundaki parantez
