@@ -1,5 +1,5 @@
 using UnityEngine;
-using TMPro; // TextMeshPro kütüphanesi (ŞART!)
+using TMPro;
 
 public class CoinUI : MonoBehaviour
 {
@@ -7,7 +7,6 @@ public class CoinUI : MonoBehaviour
 
     void Update()
     {
-        // GameManager ve CoinText hazırsa yazıyı güncelle
         if (GameManager.Instance != null && coinText != null)
         {
             coinText.text = GameManager.Instance.totalScore.ToString();

@@ -2,11 +2,9 @@ using UnityEngine;
 
 public class LevelFinishTrigger : MonoBehaviour
 {
-    // Oyuncu butona temas edince çalışır
-    public int unlockLevelID = 2; // Açılacak yeni levelin indexi
+    public int unlockLevelID = 2; // Açılacak yeni level
     private void OnTriggerEnter(Collider other)
     {
-        // Çarpan şey Oyuncu mu?
         if (other.CompareTag("Player"))
         {
             Debug.Log("Bölüm Bitti!");
@@ -16,7 +14,6 @@ public class LevelFinishTrigger : MonoBehaviour
                 Debug.Log("Yeni seviye açıldı: " + unlockLevelID);
             }
 
-            // Sahnedeki UI Yöneticisini bul ve paneli açtır
             GameUIManager uiManager = FindObjectOfType<GameUIManager>();
 
             if (uiManager != null)
@@ -28,10 +25,6 @@ public class LevelFinishTrigger : MonoBehaviour
                 Debug.LogError("HATA: Sahnede GameUIManager bulunamadı!");
             }
 
-
-
-            // İstersen butonu bir daha basılmasın diye kapatabilirsin
-            // gameObject.SetActive(false); 
         }
     }
 }

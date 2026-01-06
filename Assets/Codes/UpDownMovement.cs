@@ -6,7 +6,7 @@ public class UpDownMovement : MonoBehaviour
     public float height = 2f;
 
     private Vector3 startPos;
-    private float randomOffset; // YENİ
+    private float randomOffset;
 
     void Start()
     {
